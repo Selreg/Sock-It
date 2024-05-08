@@ -19,8 +19,15 @@ def get_file(connection, filename):
         connection.sendall('File not found'.encode())
         print(f"File {filename} not found on server.")
     
-def put_file(connection, filename):
-  pass
+def put_file(connection, filename, data_socket):
+    with open(filename, 'wb') as f:
+        while True:
+            file_data = data_socket.recv(1024)
+            if not file_data:
+                break
+            f.write(file_data)
+    print(f"File {filename} received successfully from client.")
+
 def handle_client(connection, client_address):
     print(f"Connection established with {client_address}")
     try:
@@ -35,7 +42,11 @@ def handle_client(connection, client_address):
             if action == 'GET' and len(cmd_parts) > 1:
                 get_file(connection, cmd_parts[1])
             elif action == 'PUT' and len(cmd_parts) > 1:
-                put_file(connection, cmd_parts[1])
+                data_port = int(connection.recv(1024).decode())
+                data_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                data_socket.connect((client_address[0], data_port))
+                put_file(connection, cmd_parts[1], data_socket)
+                data_socket.close()
             elif action == 'LIST':
                 list_files(connection)
             elif action == 'QUIT':
